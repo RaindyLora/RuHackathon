@@ -103,6 +103,7 @@ let isModalOpen = false;
 // ==========================================
 k.scene("menu", () => {
   isModalOpen = false;
+  k.paused = false;
   k.add([
     k.text("MYCELIUM DEFENSE", { size: 42 }),
     k.pos(k.center().x, k.height() * 0.2),
@@ -176,6 +177,7 @@ k.scene("menu", () => {
 // ==========================================
 k.scene("rules", () => {
   isModalOpen = false;
+  k.paused = false;
   k.add([
     k.text("GAME RULES & GUIDE", { size: 32 }),
     k.pos(k.center().x, 50),
@@ -225,6 +227,7 @@ k.scene("rules", () => {
 // ==========================================
 k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   isModalOpen = false;
+  k.paused = false;
   let currentWave = wave;
   let currentSpores = isSecretMode ? 999999 : (BASE_WAVE_SPORES[currentWave] || 100) + extraSpores;
   let selectedTower = "shooter";
@@ -249,7 +252,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     for (let i = 0; i < comp.giant; i++) enemyQueue.push("giant");
   }
 
-  // GOAL 1: Explicit Variable for Enemies MUST BE ELIMINATED BY PLAYER (KILLED)
+  // Explicit variable for total enemies needed to eliminate
   let remainingEnemiesInWave = enemyQueue.length;
 
   const GRID_ROWS = 5;
@@ -494,7 +497,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         { row, col, occupied: false },
       ]);
 
-      // GOAL 2: CLICK-THROUGH GUARD (tile.onClick checks isModalOpen)
+      // Guard against placing towers while modal overlays are active
       tile.onClick(() => {
         if (isModalOpen || tile.occupied) return;
 
@@ -527,7 +530,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     }
   }
 
-  // Pre-Wave Educational Fact Modals (3 consecutive popups)
+  // Pre-Wave Educational Fact Modals
   function showPreWaveEducation(facts, callback) {
     if (isSecretMode || !facts || facts.length === 0) {
       callback();
@@ -619,7 +622,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     renderFact();
   }
 
-  // Enemy Intro Modal (Wave 1)
+  // Enemy Intro Modal
   function checkEnemyIntro(enemyType, callback) {
     if (!seenEnemies[enemyType] && currentWave === 1 && !isSecretMode) {
       seenEnemies[enemyType] = true;
@@ -723,7 +726,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   });
 
-  // Main Game Loop Rules
+  // Tower Operations Loop
   k.onUpdate("mushTower", (m) => {
     if (m.type === "shooter") {
       const enemiesInRow = k.get("enemy").filter((e) => e.row === m.row && e.pos.x > m.pos.x);
@@ -746,10 +749,11 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     }
   });
 
+  // Enemy Movement & Left Edge Logic
   k.onUpdate("enemy", (e) => {
-    if (!e.eating&&k.pause===false) e.move(-e.speed, 0);
+    if (!e.eating && !k.paused) e.move(-e.speed, 0);
 
-    // GOAL 3: LEFT EDGE BOUNDARY BREACH (3 Escapes triggers LOSE condition, NEVER WIN)
+    // Left Edge Boundary Breach
     if (e.pos.x <= MARGIN_LEFT) {
       k.destroy(e);
       enemiesEscaped++;
@@ -819,7 +823,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         });
       }
 
-      // GOAL 3 LOSS CONDITION: If 3 pass left edge, triggers LOSE immediately
       if (enemiesEscaped >= 3) {
         k.go("lose");
         return;
@@ -841,26 +844,29 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         ]);
       }
     }
-
-    // GOAL 1 WIN CONDITION CHECK: Triggers ONLY when ALL enemies are KILLED by player (remainingEnemiesInWave === 0 AND 0 enemies escaped)
-    if (remainingEnemiesInWave === 0 && k.get("enemy").length === 0 && enemiesEscaped < 3 && !waveFinishedTriggered) {
-      waveFinishedTriggered = true;
-      if (isSecretMode) {
-        k.go("win", { isSecretMode: true });
-      } else {
-        showWaveVictoryModal();
-      }
-    }
   });
 
+  // Collisions & Win Condition Trigger
   k.onCollide("playerBullet", "enemy", (b, e) => {
     e.hp -= b.damage;
     k.destroy(b);
 
     if (e.hp <= 0) {
       k.destroy(e);
-      remainingEnemiesInWave--; // GOAL 1: Decrement only when ELIMINATED by towers!
+      remainingEnemiesInWave--;
       updateSpores(15);
+
+      // WIN CHECK: Triggered as soon as player eliminates all enemies in wave
+      if (remainingEnemiesInWave <= 0 && enemiesEscaped < 3 && !waveFinishedTriggered) {
+        waveFinishedTriggered = true;
+        k.wait(0.5, () => {
+          if (isSecretMode) {
+            k.go("win", { isSecretMode: true });
+          } else {
+            showWaveVictoryModal();
+          }
+        });
+      }
     }
   });
 
@@ -965,7 +971,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   }
 
-  // Post-Wave Quizzes & Next Wave Start Prompt
+  // Post-Wave Quizzes & Next Wave Prompt
   function triggerPostWaveQuizzes() {
     const quizzes = waveQuizData[currentWave] || [];
     let quizIdx = 0;
@@ -1153,6 +1159,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 // ==========================================
 k.scene("lose", () => {
   isModalOpen = false;
+  k.paused = false;
   k.add([
     k.rect(k.width(), k.height()),
     k.color(120, 10, 10),
@@ -1189,6 +1196,7 @@ k.scene("lose", () => {
 // ==========================================
 k.scene("win", ({ isSecretMode }) => {
   isModalOpen = false;
+  k.paused = false;
   k.add([
     k.text(isSecretMode ? "SECRET MODE CLEARED!" : "VICTORY! ALL WAVES CLEARED!", { size: 30 }),
     k.pos(k.center().x, k.height() * 0.35),
