@@ -1,144 +1,77 @@
 import kaplay from "kaplay";
 
+// 1. Initialize KAPLAY in full-screen mode
 const k = kaplay({
-  width: 900,
-  height: 550,
-  background: [28, 40, 28],
+  fullscreen: true,
+  scale: 1,
+  background: [28, 40, 28], // Forest floor color
 });
 
-let spores = 100;
-let selectedTower = "shooter";
-
+// 2. Define Board Specifications
 const GRID_ROWS = 5;
 const GRID_COLS = 9;
-const TILE_SIZE = 64;
-const GRID_START_X = 160;
-const GRID_START_Y = 100;
 
-// 1. Spore Counter Header
-const sporeLabel = k.add([
-  k.text(`Spores: ${spores}`, { size: 22 }),
-  k.pos(20, 20),
-  k.color(255, 230, 100),
-]);
+// State array to keep track of every tile's data
+const gridData = [];
 
-function addSpores(amount) {
-  spores += amount;
-  sporeLabel.text = `Spores: ${spores}`;
-}
+function buildFullScreenGrid() {
+  // Clear any existing tiles if window resizes
+  k.destroyAll("gridTile");
+  gridData.length = 0;
 
-// 2. Tower Selectors on Left Sidebar
-const towerTypes = [
-  { id: "shooter", name: "Shooter\n(50 Spores)", color: [220, 60, 60], cost: 50 },
-  { id: "wall", name: "Wall\n(25 Spores)", color: [200, 140, 60], cost: 25 },
-  { id: "eco", name: "Economy\n(70 Spores)", color: [240, 200, 50], cost: 70 },
-];
+  // Leave margins for future UI (top header & left sidebar)
+  const MARGIN_LEFT = k.width() * 0.15; // 15% margin on left for tower sidebar
+  const MARGIN_TOP = k.height() * 0.12;  // 12% margin on top for spore header
+  
+  const AVAILABLE_WIDTH = k.width() - MARGIN_LEFT - (k.width() * 0.05);
+  const AVAILABLE_HEIGHT = k.height() - MARGIN_TOP - (k.height() * 0.05);
 
-towerTypes.forEach((type, index) => {
-  const btnY = 100 + index * 90;
+  // Calculate dynamic tile size to perfectly fill remaining screen space
+  const tileWidth = AVAILABLE_WIDTH / GRID_COLS;
+  const tileHeight = AVAILABLE_HEIGHT / GRID_ROWS;
 
-  const btn = k.add([
-    k.rect(120, 70),
-    k.pos(20, btnY),
-    k.color(type.color[0], type.color[1], type.color[2]),
-    k.area(),
-    k.outline(selectedTower === type.id ? 4 : 0, k.rgb(255, 255, 255)),
-    "towerButton",
-  ]);
+  // Build the 5x9 Grid
+  for (let row = 0; row < GRID_ROWS; row++) {
+    gridData[row] = [];
 
-  k.add([
-    k.text(type.name, { size: 13 }),
-    k.pos(80, btnY + 35),
-    k.anchor("center"),
-    k.color(0, 0, 0),
-  ]);
+    for (let col = 0; col < GRID_COLS; col++) {
+      const x = MARGIN_LEFT + col * tileWidth;
+      const y = MARGIN_TOP + row * tileHeight;
 
-  btn.onClick(() => {
-    selectedTower = type.id;
-    k.get("towerButton").forEach((b) => (b.outline.width = 0));
-    btn.outline.width = 4;
-  });
-});
-
-// 3. 5x9 Grid Board & Planting Logic
-for (let row = 0; row < GRID_ROWS; row++) {
-  for (let col = 0; col < GRID_COLS; col++) {
-    const tileX = GRID_START_X + col * TILE_SIZE;
-    const tileY = GRID_START_Y + row * TILE_SIZE;
-
-    const tile = k.add([
-      k.rect(TILE_SIZE - 4, TILE_SIZE - 4),
-      k.pos(tileX, tileY),
-      k.color(45, 65, 45),
-      k.area(),
-      "gridTile",
-      { row, col, occupied: false },
-    ]);
-
-    tile.onClick(() => {
-      if (tile.occupied) return;
-
-      const currentConfig = towerTypes.find((t) => t.id === selectedTower);
-
-      if (spores >= currentConfig.cost) {
-        addSpores(-currentConfig.cost);
-        tile.occupied = true;
-
-        k.add([
-          k.circle(22),
-          k.pos(tileX + TILE_SIZE / 2 - 2, tileY + TILE_SIZE / 2 - 2),
-          k.color(currentConfig.color[0], currentConfig.color[1], currentConfig.color[2]),
-          k.area(),
-          "mushroom",
-          { type: selectedTower, row, lastShot: 0 },
-        ]);
-      }
-    });
-  }
-}
-
-// 4. Automatic Shooter Logic
-k.onUpdate("mushroom", (m) => {
-  if (m.type === "shooter") {
-    if (k.time() - m.lastShot > 1.5) {
-      m.lastShot = k.time();
-
-      k.add([
-        k.circle(6),
-        k.pos(m.pos.x + 20, m.pos.y),
-        k.color(255, 100, 100),
+      // Render individual tile
+      const tile = k.add([
+        k.rect(tileWidth - 4, tileHeight - 4), // 4px padding gap
+        k.pos(x, y),
+        k.color(45, 65, 45),
         k.area(),
-        k.move(0, 300),
-        "bullet",
-        { damage: 10 },
+        "gridTile",
+        {
+          row,
+          col,
+          occupied: false,
+          tileWidth,
+          tileHeight,
+        },
       ]);
+
+      // Click event logic for individual tile
+      tile.onClick(() => {
+        if (!tile.occupied) {
+          tile.occupied = true;
+          tile.color = k.rgb(80, 120, 80);
+          k.debug.log(`Clicked Grid Tile: Row ${row}, Column ${col}`);
+        }
+      });
+
+      gridData[row][col] = tile;
     }
   }
-});
+}
 
-// 5. Enemy Spawner (Elves)
-k.loop(3, () => {
-  const randomRow = Math.floor(Math.random() * GRID_ROWS);
-  const spawnY = GRID_START_Y + randomRow * TILE_SIZE + TILE_SIZE / 2;
+// Build grid on startup
+buildFullScreenGrid();
 
-  k.add([
-    k.rect(30, 40),
-    k.pos(GRID_START_X + GRID_COLS * TILE_SIZE + 20, spawnY - 20),
-    k.color(80, 200, 100),
-    k.area(),
-    k.move(180, 60),
-    "enemy",
-    { hp: 30 },
-  ]);
-});
-
-// 6. Projectile & Enemy Collisions
-k.onCollide("bullet", "enemy", (b, e) => {
-  e.hp -= b.damage;
-  k.destroy(b);
-
-  if (e.hp <= 0) {
-    k.destroy(e);
-    addSpores(15);
-  }
+// Re-calculate grid if the browser window changes size
+k.onResize(() => {
+  buildFullScreenGrid();
 });
