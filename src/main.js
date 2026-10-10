@@ -20,34 +20,23 @@ const waveEducationData = {
     { title: "Mushroom 3: Chicken of the Woods (Economy)", text: "Chicken of the Woods generates spores passively over time to fund your fungal defenses!" }
   ],
   2: [
-    { title: "Forest Fact 1: Mycelium Network", text: "Mycelium forms a massive underground network connecting plant roots to share nutrients across the forest." },
-    { title: "Forest Fact 2: Spore Production", text: "Mushrooms release millions of spores into air currents to colonize new soil areas." },
-    { title: "Forest Fact 3: Soil Aeration", text: "Fungal growth breaks up compact dirt, allowing water and oxygen to reach plant roots." }
+    { title: "Forest Fact: Mycelium Network", text: "Mycelium forms a massive underground network connecting plant roots to share nutrients across the forest." },
+    { title: "Forest Fact: Spore Production", text: "Mushrooms release millions of spores into air currents to colonize new soil areas." }
   ],
   3: [
-    { title: "Forest Fact 1: Primary Decomposers", text: "Fungi break down dead organic matter like fallen logs into rich nutrients for young saplings." },
-    { title: "Forest Fact 2: Lignin Breakdown", text: "Fungi are among the few organisms capable of breaking down tough lignin found in wood." },
-    { title: "Forest Fact 3: Carbon Cycling", text: "By decomposing forest debris, fungi return vital carbon to the atmosphere and soil." }
+    { title: "Forest Fact: Decomposers", text: "Fungi break down dead organic matter like fallen logs into rich nutrients for young saplings." }
   ],
   4: [
-    { title: "Forest Fact 1: Mycorrhizae", text: "Symbiotic fungi trade mineral nutrients from deep soil in exchange for sugars produced by trees!" },
-    { title: "Forest Fact 2: Drought Protection", text: "Mycorrhizal networks extend plant root reach, helping trees survive severe droughts." },
-    { title: "Forest Fact 3: Pathogen Defense", text: "Healthy mycorrhizae coat plant roots to block harmful bacterial infections." }
+    { title: "Forest Fact: Mycorrhizae", text: "Symbiotic fungi trade mineral nutrients from deep soil in exchange for sugars produced by trees!" }
   ],
   5: [
-    { title: "Forest Fact 1: Bioluminescence", text: "Certain fungal species produce light in dark woods to attract spore-spreading insects!" },
-    { title: "Forest Fact 2: Luciferin Reaction", text: "Fungal glowing is caused by an enzymatic reaction involving luciferin and oxygen." },
-    { title: "Forest Fact 3: Foxfire Phenomenon", text: "Bioluminescent fungi growing on decaying wood created the historic folklore known as 'Foxfire'." }
+    { title: "Forest Fact: Bioluminescence", text: "Certain fungal species produce light underwater or in dark woods to attract spore-spreading insects!" }
   ],
   6: [
-    { title: "Forest Fact 1: Fungal Immunity", text: "Fungi produce natural antimicrobial compounds that help protect forest soils from toxic bacterial blooms." },
-    { title: "Forest Fact 2: Penicillin Origin", text: "The first lifesaving antibiotic, Penicillin, was derived directly from Penicillium mold." },
-    { title: "Forest Fact 3: Soil Balance", text: "Fungal antibacterial secretions prevent single bacterial species from dominating the soil ecosystem." }
+    { title: "Forest Fact: Fungal Immunity", text: "Fungi produce natural antimicrobial compounds that help protect forest soils from toxic bacterial blooms." }
   ],
   7: [
-    { title: "Forest Fact 1: Ecosystem Guardians", text: "Healthy fungal networks prevent soil erosion and keep ancient forest ecosystems resilient!" },
-    { title: "Forest Fact 2: Old Growth Forests", text: "Ancient forests rely heavily on complex fungal networks that took centuries to develop." },
-    { title: "Forest Fact 3: Biodiversity Anchor", text: "Without fungi, forest ecosystems would collapse under un-decomposed forest waste!" }
+    { title: "Forest Fact: Ecosystem Guardians", text: "Healthy fungal networks prevent soil erosion and keep ancient forest ecosystems resilient!" }
   ]
 };
 
@@ -95,14 +84,10 @@ const enemyIntroData = {
 const seenEnemies = { elf: false, giant: false, witch: false };
 const BASE_WAVE_SPORES = { 1: 150, 2: 100, 3: 120, 4: 140, 5: 160, 6: 180, 7: 200 };
 
-// Global flag to prevent click-through on tiles when modals are open
-let isModalOpen = false;
-
 // ==========================================
 // SCENE 1: MAIN MENU
 // ==========================================
 k.scene("menu", () => {
-  isModalOpen = false;
   k.add([
     k.text("MYCELIUM DEFENSE", { size: 42 }),
     k.pos(k.center().x, k.height() * 0.2),
@@ -175,7 +160,6 @@ k.scene("menu", () => {
 // SCENE 2: RULES
 // ==========================================
 k.scene("rules", () => {
-  isModalOpen = false;
   k.add([
     k.text("GAME RULES & GUIDE", { size: 32 }),
     k.pos(k.center().x, 50),
@@ -224,7 +208,6 @@ k.scene("rules", () => {
 // SCENE 3: MAIN GAMEPLAY
 // ==========================================
 k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
-  isModalOpen = false;
   let currentWave = wave;
   let currentSpores = isSecretMode ? 999999 : (BASE_WAVE_SPORES[currentWave] || 100) + extraSpores;
   let selectedTower = "shooter";
@@ -249,8 +232,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     for (let i = 0; i < comp.giant; i++) enemyQueue.push("giant");
   }
 
-  // GOAL 1: Explicit Variable for Enemies MUST BE ELIMINATED BY PLAYER (KILLED)
-  let remainingEnemiesInWave = enemyQueue.length;
+  let totalEnemiesInWave = enemyQueue.length;
+  let spawnedEnemiesCount = 0;
 
   const GRID_ROWS = 5;
   const GRID_COLS = 9;
@@ -288,7 +271,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   returnBtn.onClick(() => showExitConfirmation());
 
   function showExitConfirmation() {
-    isModalOpen = true;
     k.paused = true;
 
     k.add([
@@ -338,7 +320,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       "exitUI"
     ]);
     yesBtn.onClick(() => {
-      isModalOpen = false;
       k.paused = false;
       k.go("menu");
     });
@@ -363,7 +344,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     ]);
     noBtn.onClick(() => {
       k.destroyAll("exitUI");
-      isModalOpen = false;
       k.paused = false;
     });
   }
@@ -396,7 +376,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
   if (isBuildingPhase) {
     earlyStartBtn = k.add([
-      k.rect(180, 32),
+      k.rect(170, 32),
       k.pos(k.width() - 250, 50),
       k.color(80, 150, 80),
       k.area(),
@@ -406,7 +386,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
     earlyStartLabel = k.add([
       k.text("START WAVE EARLY", { size: 12 }),
-      k.pos(k.width() - 160, 66),
+      k.pos(k.width() - 165, 66),
       k.anchor("center"),
       k.fixed(),
       "buildUI"
@@ -494,9 +474,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         { row, col, occupied: false },
       ]);
 
-      // GOAL 2: CLICK-THROUGH GUARD (tile.onClick checks isModalOpen)
       tile.onClick(() => {
-        if (isModalOpen || tile.occupied) return;
+        if (tile.occupied) return;
 
         const spec = TOWER_SPECS[selectedTower];
         if (currentSpores >= spec.cost || isSecretMode) {
@@ -527,7 +506,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     }
   }
 
-  // Pre-Wave Educational Fact Modals (3 consecutive popups)
+  // Pre-Wave Educational Fact Modals (3 consecutive popups for Wave 1)
   function showPreWaveEducation(facts, callback) {
     if (isSecretMode || !facts || facts.length === 0) {
       callback();
@@ -538,11 +517,9 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
     function renderFact() {
       k.destroyAll("eduUI");
-      isModalOpen = true;
       k.paused = true;
 
       const fact = facts[factIndex];
-      const isLastFact = (factIndex === facts.length - 1);
 
       k.add([
         k.rect(k.width(), k.height()),
@@ -564,7 +541,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       ]);
 
       k.add([
-        k.text(`${fact.title} (${factIndex + 1}/${facts.length})`, { size: 19 }),
+        k.text(fact.title, { size: 20 }),
         k.pos(k.center().x, k.center().y - 70),
         k.anchor("center"),
         k.color(40, 40, 40),
@@ -583,8 +560,10 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         "eduUI"
       ]);
 
+      const isLastFact = factIndex === facts.length - 1;
+
       const nextBtn = k.add([
-        k.rect(170, 40),
+        k.rect(140, 40),
         k.pos(k.center().x, k.center().y + 75),
         k.anchor("center"),
         k.color(80, 150, 80),
@@ -595,7 +574,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       ]);
 
       k.add([
-        k.text(isLastFact ? "START BUILDING" : "NEXT FACT", { size: 13 }),
+        k.text(isLastFact ? "CLOSE" : "NEXT FACT", { size: 14 }),
         k.pos(k.center().x, k.center().y + 75),
         k.anchor("center"),
         k.fixed(),
@@ -609,7 +588,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
           renderFact();
         } else {
           k.destroyAll("eduUI");
-          isModalOpen = false;
           k.paused = false;
           callback();
         }
@@ -623,7 +601,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   function checkEnemyIntro(enemyType, callback) {
     if (!seenEnemies[enemyType] && currentWave === 1 && !isSecretMode) {
       seenEnemies[enemyType] = true;
-      isModalOpen = true;
       k.paused = true;
 
       k.add([
@@ -677,7 +654,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
       okBtn.onClick(() => {
         k.destroyAll("introUI");
-        isModalOpen = false;
         k.paused = false;
         callback();
       });
@@ -688,22 +664,22 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
   // Enemy Spawner Loop
   k.loop(2.5, () => {
-    if (isBuildingPhase || enemyQueue.length === 0 || k.paused) return;
+    if (isBuildingPhase || enemyQueue.length === 0) return;
 
-    const nextType = enemyQueue[0];
-    checkEnemyIntro(nextType, () => {
-      const enemyType = enemyQueue.shift();
-      const row = Math.floor(Math.random() * GRID_ROWS);
-      const spawnX = k.width() + 20;
-      const spawnY = MARGIN_TOP + row * TILE_H + TILE_H / 2;
+    const enemyType = enemyQueue.shift();
+    const row = Math.floor(Math.random() * GRID_ROWS);
+    const spawnX = k.width() + 20;
+    const spawnY = MARGIN_TOP + row * TILE_H + TILE_H / 2;
 
-      let enemySpec = { color: k.rgb(80, 200, 80), hp: 35, speed: 50, size: [30, 40] };
-      if (enemyType === "giant") {
-        enemySpec = { color: k.rgb(130, 130, 130), hp: 120, speed: 25, size: [45, 55] };
-      } else if (enemyType === "witch") {
-        enemySpec = { color: k.rgb(160, 60, 200), hp: 50, speed: 40, size: [35, 45] };
-      }
+    let enemySpec = { color: k.rgb(80, 200, 80), hp: 35, speed: 50, size: [30, 40] };
+    if (enemyType === "giant") {
+      enemySpec = { color: k.rgb(130, 130, 130), hp: 120, speed: 25, size: [45, 55] };
+    } else if (enemyType === "witch") {
+      enemySpec = { color: k.rgb(160, 60, 200), hp: 50, speed: 40, size: [35, 45] };
+    }
 
+    checkEnemyIntro(enemyType, () => {
+      spawnedEnemiesCount++;
       k.add([
         k.rect(enemySpec.size[0], enemySpec.size[1]),
         k.pos(spawnX, spawnY),
@@ -723,7 +699,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   });
 
-  // Main Game Loop Rules
+  // Main Loop Rules
   k.onUpdate("mushTower", (m) => {
     if (m.type === "shooter") {
       const enemiesInRow = k.get("enemy").filter((e) => e.row === m.row && e.pos.x > m.pos.x);
@@ -747,9 +723,9 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   });
 
   k.onUpdate("enemy", (e) => {
-    if (!e.eating) e.move(-e.speed, 0);
+    if (!e.eating&&k.paused===false) e.move(-e.speed, 0);
 
-    // GOAL 3: LEFT EDGE BOUNDARY BREACH (3 Escapes triggers LOSE condition, NEVER WIN)
+    // Left Edge Boundary Breach
     if (e.pos.x <= MARGIN_LEFT) {
       k.destroy(e);
       enemiesEscaped++;
@@ -760,7 +736,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
       if (enemiesEscaped === 1 && !escapedWarningShown) {
         escapedWarningShown = true;
-        isModalOpen = true;
         k.paused = true;
 
         k.add([
@@ -814,15 +789,12 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
         cBtn.onClick(() => {
           k.destroyAll("warnUI");
-          isModalOpen = false;
           k.paused = false;
         });
       }
 
-      // GOAL 3 LOSS CONDITION: If 3 pass left edge, triggers LOSE immediately
       if (enemiesEscaped >= 3) {
         k.go("lose");
-        return;
       }
     }
 
@@ -842,8 +814,9 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       }
     }
 
-    // GOAL 1 WIN CONDITION CHECK: Triggers ONLY when ALL enemies are KILLED by player (remainingEnemiesInWave === 0 AND 0 enemies escaped)
-    if (remainingEnemiesInWave === 0 && k.get("enemy").length === 0 && enemiesEscaped < 3 && !waveFinishedTriggered) {
+ 
+    // Check Win Condition for Current Wave
+    if (enemyQueue.length === 0 && k.get("enemy").length === 0 && spawnedEnemiesCount >= totalEnemiesInWave && !waveFinishedTriggered) {
       waveFinishedTriggered = true;
       if (isSecretMode) {
         k.go("win", { isSecretMode: true });
@@ -856,10 +829,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   k.onCollide("playerBullet", "enemy", (b, e) => {
     e.hp -= b.damage;
     k.destroy(b);
-
     if (e.hp <= 0) {
       k.destroy(e);
-      remainingEnemiesInWave--; // GOAL 1: Decrement only when ELIMINATED by towers!
       updateSpores(15);
     }
   });
@@ -895,7 +866,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
   // Mid-Wave Victory Popup Modal
   function showWaveVictoryModal() {
-    isModalOpen = true;
     k.paused = true;
 
     k.add([
@@ -946,7 +916,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       k.text(currentWave < 7 ? "START QUIZ" : "MAIN MENU", { size: 16 }),
       k.pos(k.center().x, k.center().y + 65),
       k.anchor("center"),
-      k.color(255, 255, 255),
       k.fixed(),
       k.z(168),
       "victoryUI"
@@ -954,7 +923,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
     continueBtn.onClick(() => {
       k.destroyAll("victoryUI");
-      isModalOpen = false;
       k.paused = false;
       if (currentWave < 7) {
         triggerPostWaveQuizzes();
@@ -965,7 +933,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   }
 
-  // Post-Wave Quizzes & Next Wave Start Prompt
+  // Post-Wave Quizzes & Wave Progression Prompt
   function triggerPostWaveQuizzes() {
     const quizzes = waveQuizData[currentWave] || [];
     let quizIdx = 0;
@@ -977,7 +945,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         return;
       }
 
-      isModalOpen = true;
       k.paused = true;
       const qData = quizzes[quizIdx];
 
@@ -1056,7 +1023,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
     function showNextWavePrompt(extraSpores) {
       const nextWaveNum = currentWave + 1;
-      isModalOpen = true;
 
       k.add([
         k.rect(k.width(), k.height()),
@@ -1109,7 +1075,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
       yesBtn.onClick(() => {
         k.destroyAll("nextUI");
-        isModalOpen = false;
         k.paused = false;
         k.go("game", { wave: nextWaveNum, extraSpores: extraSpores, isSecretMode: false });
       });
@@ -1136,7 +1101,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
       noBtn.onClick(() => {
         k.destroyAll("nextUI");
-        isModalOpen = false;
         k.paused = false;
         k.go("menu");
       });
@@ -1152,7 +1116,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 // SCENE 4: GAME OVER (LOSE)
 // ==========================================
 k.scene("lose", () => {
-  isModalOpen = false;
   k.add([
     k.rect(k.width(), k.height()),
     k.color(120, 10, 10),
@@ -1188,7 +1151,6 @@ k.scene("lose", () => {
 // SCENE 5: VICTORY (WIN)
 // ==========================================
 k.scene("win", ({ isSecretMode }) => {
-  isModalOpen = false;
   k.add([
     k.text(isSecretMode ? "SECRET MODE CLEARED!" : "VICTORY! ALL WAVES CLEARED!", { size: 30 }),
     k.pos(k.center().x, k.height() * 0.35),
@@ -1223,5 +1185,5 @@ k.scene("win", ({ isSecretMode }) => {
   menuBtn.onClick(() => k.go("menu"));
 });
 
-// Start application on main menu
+// Start app on main menu
 k.go("menu");
