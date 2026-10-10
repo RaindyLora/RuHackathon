@@ -747,7 +747,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   });
 
   k.onUpdate("enemy", (e) => {
-    if (!e.eating) e.move(-e.speed, 0);
+    if (!e.eating&&k.pause===false) e.move(-e.speed, 0);
 
     // GOAL 3: LEFT EDGE BOUNDARY BREACH (3 Escapes triggers LOSE condition, NEVER WIN)
     if (e.pos.x <= MARGIN_LEFT) {
