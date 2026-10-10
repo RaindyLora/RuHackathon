@@ -11,7 +11,7 @@ const k = kaplay({
 let secretModeUnlocked = false;
 
 // ==========================================
-// EDUCATIONAL & QUIZ DATA BANK
+// EDUCATIONAL & QUIZ DATA BANK (3 Facts & 3 Questions per Wave)
 // ==========================================
 const waveEducationData = {
   1: [
@@ -20,23 +20,34 @@ const waveEducationData = {
     { title: "Mushroom 3: Chicken of the Woods (Economy)", text: "Chicken of the Woods generates spores passively over time to fund your fungal defenses!" }
   ],
   2: [
-    { title: "Forest Fact: Mycelium Network", text: "Mycelium forms a massive underground network connecting plant roots to share nutrients across the forest." },
-    { title: "Forest Fact: Spore Production", text: "Mushrooms release millions of spores into air currents to colonize new soil areas." }
+    { title: "Forest Fact 1: Mycelium Network", text: "Mycelium forms a massive underground network connecting plant roots to share nutrients across the forest." },
+    { title: "Forest Fact 2: Spore Production", text: "Mushrooms release millions of spores into air currents to colonize new soil areas." },
+    { title: "Forest Fact 3: Soil Aeration", text: "Fungal growth breaks up compact dirt, allowing water and oxygen to reach plant roots." }
   ],
   3: [
-    { title: "Forest Fact: Decomposers", text: "Fungi break down dead organic matter like fallen logs into rich nutrients for young saplings." }
+    { title: "Forest Fact 1: Primary Decomposers", text: "Fungi break down dead organic matter like fallen logs into rich nutrients for young saplings." },
+    { title: "Forest Fact 2: Lignin Breakdown", text: "Fungi are among the few organisms capable of breaking down tough lignin found in wood." },
+    { title: "Forest Fact 3: Carbon Cycling", text: "By decomposing forest debris, fungi return vital carbon to the atmosphere and soil." }
   ],
   4: [
-    { title: "Forest Fact: Mycorrhizae", text: "Symbiotic fungi trade mineral nutrients from deep soil in exchange for sugars produced by trees!" }
+    { title: "Forest Fact 1: Mycorrhizae", text: "Symbiotic fungi trade mineral nutrients from deep soil in exchange for sugars produced by trees!" },
+    { title: "Forest Fact 2: Drought Protection", text: "Mycorrhizal networks extend plant root reach, helping trees survive severe droughts." },
+    { title: "Forest Fact 3: Pathogen Defense", text: "Healthy mycorrhizae coat plant roots to block harmful bacterial infections." }
   ],
   5: [
-    { title: "Forest Fact: Bioluminescence", text: "Certain fungal species produce light underwater or in dark woods to attract spore-spreading insects!" }
+    { title: "Forest Fact 1: Bioluminescence", text: "Certain fungal species produce light in dark woods to attract spore-spreading insects!" },
+    { title: "Forest Fact 2: Luciferin Reaction", text: "Fungal glowing is caused by an enzymatic reaction involving luciferin and oxygen." },
+    { title: "Forest Fact 3: Foxfire Phenomenon", text: "Bioluminescent fungi growing on decaying wood created the historic folklore known as 'Foxfire'." }
   ],
   6: [
-    { title: "Forest Fact: Fungal Immunity", text: "Fungi produce natural antimicrobial compounds that help protect forest soils from toxic bacterial blooms." }
+    { title: "Forest Fact 1: Fungal Immunity", text: "Fungi produce natural antimicrobial compounds that help protect forest soils from toxic bacterial blooms." },
+    { title: "Forest Fact 2: Penicillin Origin", text: "The first lifesaving antibiotic, Penicillin, was derived directly from Penicillium mold." },
+    { title: "Forest Fact 3: Soil Balance", text: "Fungal antibacterial secretions prevent single bacterial species from dominating the soil ecosystem." }
   ],
   7: [
-    { title: "Forest Fact: Ecosystem Guardians", text: "Healthy fungal networks prevent soil erosion and keep ancient forest ecosystems resilient!" }
+    { title: "Forest Fact 1: Ecosystem Guardians", text: "Healthy fungal networks prevent soil erosion and keep ancient forest ecosystems resilient!" },
+    { title: "Forest Fact 2: Old Growth Forests", text: "Ancient forests rely heavily on complex fungal networks that took centuries to develop." },
+    { title: "Forest Fact 3: Biodiversity Anchor", text: "Without fungi, forest ecosystems would collapse under un-decomposed forest waste!" }
   ]
 };
 
@@ -178,7 +189,7 @@ k.scene("rules", () => {
     "• Giant: Slow, high HP tank\n" +
     "• Witch: Ranged spellcaster\n\n" +
     "BUILDING PHASE & DEFENSE:\n" +
-    "• 30-second building phase before attack (or click Start Wave Early).\n" +
+    "• 30-second building phase before attack (or click Start Building Early).\n" +
     "• You have 3 lives. If 3 enemies reach the left edge, game is lost!";
 
   k.add([
@@ -232,8 +243,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     for (let i = 0; i < comp.giant; i++) enemyQueue.push("giant");
   }
 
-  let totalEnemiesInWave = enemyQueue.length;
-  let spawnedEnemiesCount = 0;
+  // Explicit Variable Representing Enemies Remaining to Win Round
+  let remainingEnemiesInWave = enemyQueue.length;
 
   const GRID_ROWS = 5;
   const GRID_COLS = 9;
@@ -376,7 +387,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
   if (isBuildingPhase) {
     earlyStartBtn = k.add([
-      k.rect(170, 32),
+      k.rect(180, 32),
       k.pos(k.width() - 250, 50),
       k.color(80, 150, 80),
       k.area(),
@@ -385,8 +396,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     ]);
 
     earlyStartLabel = k.add([
-      k.text("START WAVE EARLY", { size: 12 }),
-      k.pos(k.width() - 165, 66),
+      k.text("START BUILDING EARLY", { size: 11 }),
+      k.pos(k.width() - 160, 66),
       k.anchor("center"),
       k.fixed(),
       "buildUI"
@@ -506,7 +517,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     }
   }
 
-  // Pre-Wave Educational Fact Modals (3 consecutive popups for Wave 1)
+  // Pre-Wave Educational Fact Modals (3 consecutive popups for each wave)
   function showPreWaveEducation(facts, callback) {
     if (isSecretMode || !facts || facts.length === 0) {
       callback();
@@ -520,6 +531,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       k.paused = true;
 
       const fact = facts[factIndex];
+      const isLastFact = (factIndex === facts.length - 1);
 
       k.add([
         k.rect(k.width(), k.height()),
@@ -541,7 +553,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       ]);
 
       k.add([
-        k.text(fact.title, { size: 20 }),
+        k.text(`${fact.title} (${factIndex + 1}/${facts.length})`, { size: 19 }),
         k.pos(k.center().x, k.center().y - 70),
         k.anchor("center"),
         k.color(40, 40, 40),
@@ -560,10 +572,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         "eduUI"
       ]);
 
-      const isLastFact = factIndex === facts.length - 1;
-
       const nextBtn = k.add([
-        k.rect(140, 40),
+        k.rect(170, 40),
         k.pos(k.center().x, k.center().y + 75),
         k.anchor("center"),
         k.color(80, 150, 80),
@@ -574,7 +584,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       ]);
 
       k.add([
-        k.text(isLastFact ? "CLOSE" : "NEXT FACT", { size: 14 }),
+        k.text(isLastFact ? "START BUILDING" : "NEXT FACT", { size: 13 }),
         k.pos(k.center().x, k.center().y + 75),
         k.anchor("center"),
         k.fixed(),
@@ -679,7 +689,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     }
 
     checkEnemyIntro(enemyType, () => {
-      spawnedEnemiesCount++;
       k.add([
         k.rect(enemySpec.size[0], enemySpec.size[1]),
         k.pos(spawnX, spawnY),
@@ -699,7 +708,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   });
 
-  // Main Loop Rules
+  // Main Game Loop Rules
   k.onUpdate("mushTower", (m) => {
     if (m.type === "shooter") {
       const enemiesInRow = k.get("enemy").filter((e) => e.row === m.row && e.pos.x > m.pos.x);
@@ -729,6 +738,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     if (e.pos.x <= MARGIN_LEFT) {
       k.destroy(e);
       enemiesEscaped++;
+      remainingEnemiesInWave--; // Enemy left field, decrements total count
 
       boundaryCounterLabel.text = `${enemiesEscaped}/3`;
       boundaryCounterLabel.textSize = 54;
@@ -814,9 +824,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       }
     }
 
- 
-    // Check Win Condition for Current Wave
-    if (enemyQueue.length === 0 && k.get("enemy").length === 0 && spawnedEnemiesCount >= totalEnemiesInWave && !waveFinishedTriggered) {
+    // WIN CONDITION CHECK: When remainingEnemiesInWave hits 0
+    if (remainingEnemiesInWave === 0 && k.get("enemy").length === 0 && !waveFinishedTriggered) {
       waveFinishedTriggered = true;
       if (isSecretMode) {
         k.go("win", { isSecretMode: true });
@@ -829,8 +838,10 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   k.onCollide("playerBullet", "enemy", (b, e) => {
     e.hp -= b.damage;
     k.destroy(b);
+
     if (e.hp <= 0) {
       k.destroy(e);
+      remainingEnemiesInWave--; // Enemy killed by tower, decrements total count
       updateSpores(15);
     }
   });
@@ -933,7 +944,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   }
 
-  // Post-Wave Quizzes & Wave Progression Prompt
+  // Post-Wave Quizzes & Next Wave Start Prompt
   function triggerPostWaveQuizzes() {
     const quizzes = waveQuizData[currentWave] || [];
     let quizIdx = 0;
