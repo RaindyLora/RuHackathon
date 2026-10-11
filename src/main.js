@@ -8,13 +8,23 @@ const k = kaplay({
 });
 
 // ==========================================
-// AUDIO ASSETS & MANAGEMENT
+// AUDIO & SPRITE ASSET MANAGEMENT
 // ==========================================
 k.loadSound("menuBGM", "/audio/MenuMusic (1).mp3");
 k.loadSound("buildBGM", "/audio/BuildMusic (1).mp3");
 k.loadSound("attackBGM", "/audio/AttackMusic (1).mp3");
 k.loadSound("winBGM", "/audio/WinMusic (1).mp3");
 k.loadSound("loseBGM", "/audio/Lose (1).mp3");
+
+// Load custom background and sprites
+k.loadSprite("gameBackground", "/sprites/background.png");
+k.loadSprite("shooterMushroom", "/sprites/shooter.png");
+k.loadSprite("wallMushroom", "/sprites/wall.png");
+k.loadSprite("ecoMushroom", "/sprites/eco.png");
+k.loadSprite("elfSprite", "/sprites/elf.png");
+k.loadSprite("witchSprite", "/sprites/witch.png");
+k.loadSprite("giantSprite", "/sprites/giant.png");
+k.loadSprite("menuBackground", "/sprites/menu_bg.png");
 
 let currentAudioTrack = null;
 let currentTrackName = "";
@@ -40,7 +50,6 @@ function playMusic(soundName, volume = 0.5) {
   }
 }
 
-// Unlock audio on first user click anywhere on the page
 window.addEventListener("click", () => {
   if (!audioUnlocked) {
     audioUnlocked = true;
@@ -50,11 +59,10 @@ window.addEventListener("click", () => {
   }
 }, { once: true });
 
-// Global state tracking Secret Mode unlock status
 let secretModeUnlocked = false;
 
 // ==========================================
-// EDUCATIONAL & QUIZ DATA BANK
+// DATA BANKS
 // ==========================================
 const waveEducationData = {
   1: [
@@ -137,8 +145,6 @@ const enemyIntroData = {
 
 const seenEnemies = { elf: false, giant: false, witch: false };
 const BASE_WAVE_SPORES = { 1: 150, 2: 100, 3: 120, 4: 140, 5: 160, 6: 180, 7: 200 };
-
-// Global flag to prevent click-through on tiles when modals are open
 let isModalOpen = false;
 
 // ==========================================
@@ -148,6 +154,15 @@ k.scene("menu", () => {
   playMusic("menuBGM");
   isModalOpen = false;
   k.paused = false;
+
+  // Render dedicated menu background
+  k.add([
+    k.sprite("menuBackground", { width: k.width(), height: k.height() }),
+    k.pos(0, 0),
+    k.z(-100),
+    k.fixed(),
+  ]);
+
   k.add([
     k.text("MYCELIUM DEFENSE", { size: 42 }),
     k.pos(k.center().x, k.height() * 0.2),
@@ -155,7 +170,6 @@ k.scene("menu", () => {
     k.color(255, 230, 100)
   ]);
 
-  // PLAY
   const playBtn = k.add([
     k.rect(240, 50),
     k.pos(k.center().x, k.height() * 0.42),
@@ -176,7 +190,6 @@ k.scene("menu", () => {
     k.go("game", { wave: 1, extraSpores: 0, isSecretMode: false });
   });
 
-  // RULES
   const rulesBtn = k.add([
     k.rect(240, 50),
     k.pos(k.center().x, k.height() * 0.55),
@@ -192,7 +205,6 @@ k.scene("menu", () => {
   ]);
   rulesBtn.onClick(() => k.go("rules"));
 
-  // SECRET MODE
   const secretBtn = k.add([
     k.rect(240, 50),
     k.pos(k.center().x, k.height() * 0.68),
@@ -222,6 +234,7 @@ k.scene("menu", () => {
 k.scene("rules", () => {
   isModalOpen = false;
   k.paused = false;
+
   k.add([
     k.text("GAME RULES & GUIDE", { size: 32 }),
     k.pos(k.center().x, 50),
@@ -272,6 +285,15 @@ k.scene("rules", () => {
 k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   isModalOpen = false;
   k.paused = false;
+
+  // Render Background Image
+  k.add([
+    k.sprite("gameBackground", { width: k.width(), height: k.height() }),
+    k.pos(0, 0),
+    k.z(-100),
+    k.fixed(),
+  ]);
+
   let currentWave = wave;
   let currentSpores = isSecretMode ? 500 : (BASE_WAVE_SPORES[currentWave] || 100) + extraSpores;
   let selectedTower = "shooter";
@@ -279,7 +301,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   let escapedWarningShown = false;
   let waveFinishedTriggered = false;
 
-  // Building Phase Timer & Music State
   let buildTimeRemaining = isSecretMode ? 0 : 30;
   let isBuildingPhase = !isSecretMode;
 
@@ -289,7 +310,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     playMusic("attackBGM");
   }
 
-  // Wave Enemy Queue Construction
   let enemyQueue = [];
   if (isSecretMode) {
     for (let i = 0; i < 100; i++) enemyQueue.push("giant");
@@ -302,25 +322,26 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
   let remainingEnemiesInWave = enemyQueue.length;
 
-  const GRID_ROWS = 5;
+  // Set grid dimensions strictly to 4 Rows x 9 Columns
+  const GRID_ROWS = 4;
   const GRID_COLS = 9;
   const gridTiles = [];
 
-  const MARGIN_LEFT = k.width() * 0.16;
-  const MARGIN_TOP = k.height() * 0.14;
-  const AVAILABLE_WIDTH = k.width() - MARGIN_LEFT - k.width() * 0.04;
-  const AVAILABLE_HEIGHT = k.height() - MARGIN_TOP - k.height() * 0.05;
+  // Calibrated margins for a 4x9 grid layout
+  const MARGIN_LEFT = k.width() * 0.185;
+  const MARGIN_TOP = k.height() * 0.240;
+  const AVAILABLE_WIDTH = k.width() * 0.702;
+  const AVAILABLE_HEIGHT = k.height() * 0.620;
 
   const TILE_W = AVAILABLE_WIDTH / GRID_COLS;
   const TILE_H = AVAILABLE_HEIGHT / GRID_ROWS;
 
   const TOWER_SPECS = {
-    shooter: { name: "Shooter", cost: 50, color: k.rgb(220, 60, 60), hp: 40 },
-    wall: { name: "Wall", cost: 25, color: k.rgb(160, 110, 50), hp: 150 },
-    eco: { name: "Economy", cost: 70, color: k.rgb(240, 210, 50), hp: 30 },
+    shooter: { name: "Shooter", cost: 50, color: k.rgb(220, 60, 60), sprite: "shooterMushroom", hp: 40 },
+    wall: { name: "Wall", cost: 25, color: k.rgb(160, 110, 50), sprite: "wallMushroom", hp: 150 },
+    eco: { name: "Economy", cost: 70, color: k.rgb(240, 210, 50), sprite: "ecoMushroom", hp: 30 },
   };
 
-  // Return Button & Confirmation Modal
   const returnBtn = k.add([
     k.rect(100, 35),
     k.pos(15, 15),
@@ -418,7 +439,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   }
 
-  // HUD Elements
   const sporeText = k.add([
     k.text(`Spores: ${isSecretMode ? currentSpores : currentSpores} | Wave: ${isSecretMode ? "SECRET" : currentWave + "/7"}`, { size: 18 }),
     k.pos(130, 22),
@@ -433,7 +453,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     k.fixed(),
   ]);
 
-  // Start Wave Early Button UI
   let earlyStartBtn = null;
   let earlyStartLabel = null;
 
@@ -443,8 +462,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     phaseTimerText.text = "ATTACK PHASE!";
     if (earlyStartBtn) k.destroy(earlyStartBtn);
     if (earlyStartLabel) k.destroy(earlyStartLabel);
-    
-    // Switch to Attack Music
     playMusic("attackBGM");
   }
 
@@ -486,7 +503,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   }
 
-  // Escaped Counter Display above Grid
   const boundaryCounterLabel = k.add([
     k.text("", { size: 36 }),
     k.pos(MARGIN_LEFT + AVAILABLE_WIDTH / 2, MARGIN_TOP - 30),
@@ -501,7 +517,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     sporeText.text = `Spores: ${currentSpores} | Wave: ${isSecretMode ? "SECRET" : currentWave + "/7"}`;
   }
 
-  // Sidebar Tower Selectors
+  // Sidebar Selection Buttons
   const towerTypes = ["shooter", "wall", "eco"];
   towerTypes.forEach((type, idx) => {
     const spec = TOWER_SPECS[type];
@@ -517,8 +533,14 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     ]);
 
     k.add([
-      k.text(`${spec.name}\n(${spec.cost} S)`, { size: 13 }),
-      k.pos(MARGIN_LEFT / 2 - 5, btnY + 32),
+      k.sprite(spec.sprite, { width: 36, height: 36 }),
+      k.pos(35, btnY + 32),
+      k.anchor("center"),
+    ]);
+
+    k.add([
+      k.text(`${spec.name}\n(${spec.cost} S)`, { size: 12 }),
+      k.pos(MARGIN_LEFT / 2 + 12, btnY + 32),
       k.anchor("center"),
       k.color(0, 0, 0),
     ]);
@@ -530,18 +552,20 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   });
 
-  // Grid Creation
+  // 4x9 Interactive Grid Creation
   for (let row = 0; row < GRID_ROWS; row++) {
     gridTiles[row] = [];
     for (let col = 0; col < GRID_COLS; col++) {
-      const x = MARGIN_LEFT + col * TILE_W;
-      const y = MARGIN_TOP + row * TILE_H;
+      const centerX = MARGIN_LEFT + col * TILE_W + TILE_W / 2;
+      const centerY = MARGIN_TOP + row * TILE_H + TILE_H / 2;
 
       const tile = k.add([
-        k.rect(TILE_W - 4, TILE_H - 4),
-        k.pos(x, y),
+        k.rect(TILE_W - 2, TILE_H - 2),
+        k.pos(centerX, centerY),
+        k.anchor("center"),
         k.color(45, 65, 45),
-        k.opacity(0.8),
+        k.opacity(0.12),
+        k.outline(1, k.rgb(100, 200, 100)),
         k.area(),
         "tile",
         { row, col, occupied: false },
@@ -556,10 +580,9 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
           tile.occupied = true;
 
           k.add([
-            k.circle(Math.min(TILE_W, TILE_H) * 0.35),
-            k.pos(x + TILE_W / 2, y + TILE_H / 2),
+            k.sprite(spec.sprite, { width: TILE_W * 0.82, height: TILE_H * 0.82 }),
+            k.pos(tile.pos.x, tile.pos.y),
             k.anchor("center"),
-            k.color(spec.color),
             k.area(),
             "mushTower",
             {
@@ -581,7 +604,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     }
   }
 
-  // Pre-Wave Educational Fact Modals
   function showPreWaveEducation(facts, callback) {
     if (isSecretMode || !facts || facts.length === 0) {
       callback();
@@ -675,7 +697,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     renderFact();
   }
 
-  // Enemy Intro Modal (Wave 1: Elf, Wave 3: Witch, Wave 5: Giant)
   function checkEnemyIntro(enemyType, callback) {
     const shouldShowElf = (enemyType === "elf" && currentWave === 1 && !seenEnemies.elf);
     const shouldShowWitch = (enemyType === "witch" && currentWave === 3 && !seenEnemies.witch);
@@ -746,7 +767,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     }
   }
 
-  // Enemy Spawner Loop
+  // Enemy Spawner Loop (Dynamic row choice 0 through GRID_ROWS - 1)
   k.loop(2.5, () => {
     if (isBuildingPhase || enemyQueue.length === 0 || k.paused) return;
 
@@ -754,21 +775,20 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     checkEnemyIntro(nextType, () => {
       const enemyType = enemyQueue.shift();
       const row = Math.floor(Math.random() * GRID_ROWS);
-      const spawnX = k.width() + 20;
+      const spawnX = k.width() + 30;
       const spawnY = MARGIN_TOP + row * TILE_H + TILE_H / 2;
 
-      let enemySpec = { color: k.rgb(80, 200, 80), hp: 35, speed: 50, size: [30, 40] };
+      let enemySpec = { sprite: "elfSprite", hp: 35, speed: 50, width: 50, height: 65 };
       if (enemyType === "giant") {
-        enemySpec = { color: k.rgb(130, 130, 130), hp: 120, speed: 25, size: [45, 55] };
+        enemySpec = { sprite: "giantSprite", hp: 120, speed: 25, width: 80, height: 95 };
       } else if (enemyType === "witch") {
-        enemySpec = { color: k.rgb(160, 60, 200), hp: 50, speed: 40, size: [35, 45] };
+        enemySpec = { sprite: "witchSprite", hp: 50, speed: 40, width: 55, height: 70 };
       }
 
       k.add([
-        k.rect(enemySpec.size[0], enemySpec.size[1]),
+        k.sprite(enemySpec.sprite, { width: enemySpec.width, height: enemySpec.height }),
         k.pos(spawnX, spawnY),
         k.anchor("center"),
-        k.color(enemySpec.color),
         k.area(),
         "enemy",
         {
@@ -783,7 +803,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   });
 
-  // Tower Operations Loop
   k.onUpdate("mushTower", (m) => {
     if (m.type === "shooter") {
       if (k.paused || isModalOpen) return;
@@ -820,11 +839,9 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     if (!k.paused) pb.move(pb.speed, 0);
   });
 
-  // Enemy Movement & Left Edge Logic
   k.onUpdate("enemy", (e) => {
     if (!e.eating && !k.paused) e.move(-e.speed, 0);
 
-    // Left Edge Boundary Breach
     if (e.pos.x <= MARGIN_LEFT) {
       k.destroy(e);
       remainingEnemiesInWave--;
@@ -935,7 +952,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     if (k.paused !== true) eb.move(-eb.speed, 0);
   });
 
-  // Collisions & Win Condition Trigger
   k.onCollide("playerBullet", "enemy", (b, e) => {
     e.hp -= b.damage;
     k.destroy(b);
@@ -987,7 +1003,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     }
   });
 
-  // Mid-Wave Victory Popup Modal
   function showWaveVictoryModal() {
     playMusic("winBGM");
     isModalOpen = true;
@@ -1063,7 +1078,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     });
   }
 
-  // Post-Wave Quizzes & Next Wave Prompt
   function triggerPostWaveQuizzes() {
     const quizzes = waveQuizData[currentWave] || [];
     let quizIdx = 0;
@@ -1294,6 +1308,7 @@ k.scene("win", ({ isSecretMode }) => {
   playMusic("winBGM");
   isModalOpen = false;
   k.paused = false;
+
   k.add([
     k.text(isSecretMode ? "SECRET MODE CLEARED!" : "VICTORY! ALL WAVES CLEARED!", { size: 30 }),
     k.pos(k.center().x, k.height() * 0.35),
@@ -1328,5 +1343,4 @@ k.scene("win", ({ isSecretMode }) => {
   menuBtn.onClick(() => k.go("menu"));
 });
 
-// Start application on main menu
 k.go("menu");
