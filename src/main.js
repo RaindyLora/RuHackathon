@@ -337,9 +337,9 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   const TILE_H = AVAILABLE_HEIGHT / GRID_ROWS;
 
   const TOWER_SPECS = {
-    shooter: { name: "Shooter", cost: 50, color: k.rgb(220, 60, 60), sprite: "shooterMushroom", hp: 40 },
-    wall: { name: "Wall", cost: 25, color: k.rgb(160, 110, 50), sprite: "wallMushroom", hp: 150 },
-    eco: { name: "Economy", cost: 70, color: k.rgb(240, 210, 50), sprite: "ecoMushroom", hp: 30 },
+    shooter: { name: "Bleeding Tooth", cost: 50, color: k.rgb(220, 60, 60), sprite: "shooterMushroom", hp: 40 },
+    wall: { name: "Poison Fire Coral", cost: 25, color: k.rgb(160, 110, 50), sprite: "wallMushroom", hp: 150 },
+    eco: { name: "Chicken of the Woods", cost: 70, color: k.rgb(240, 210, 50), sprite: "ecoMushroom", hp: 30 },
   };
 
   const returnBtn = k.add([
