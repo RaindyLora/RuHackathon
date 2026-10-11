@@ -515,6 +515,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
               col,
               hp: spec.hp,
               lastShot: 0,
+              cooldown: 0,
+              initialPause:0,
               lastEco: 0,
               tileRef: tile,
             },
@@ -720,7 +722,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
           hp: enemySpec.hp,
           speed: enemySpec.speed,
           eating: false,
-          lastWitchShot: 0,
+          witchCooldown: 0,
         },
       ]);
     });
@@ -729,26 +731,41 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   // Tower Operations Loop
   k.onUpdate("mushTower", (m) => {
     if (m.type === "shooter") {
+      if (k.paused || isModalOpen) return;
+      // Decrement remaining cooldown timer using frame delta time
+      if (m.cooldown > 0) {
+        m.cooldown -= k.dt();
+      }
       const enemiesInRow = k.get("enemy").filter((e) => e.row === m.row && e.pos.x > m.pos.x);
-      if (enemiesInRow.length > 0 && k.time() - m.lastShot > 1.2) {
-        m.lastShot = k.time();
+      if (enemiesInRow.length > 0 && m.cooldown <= 0 && k.paused===false) {
+        m.cooldown=2.0;
         k.add([
           k.circle(8),
           k.pos(m.pos.x + 15, m.pos.y),
           k.color(255, 80, 80),
           k.area(),
-          k.move(0, 320),
           "playerBullet",
-          { damage: 15, row: m.row },
+          { damage: 10, row: m.row , speed: 100},
         ]);
       }
     }
-    if (m.type === "eco" && k.time() - m.lastEco > 6) {
-      m.lastEco = k.time();
-      updateSpores(25);
+    if (m.type === "eco") {
+      if (k.paused || isModalOpen) return;
+      // Decrement remaining cooldown timer using frame delta time
+      if (m.cooldown > 0) {
+        m.cooldown -= k.dt();
+      }
+      const enemiesInRow = k.get("enemy").filter((e) => e.row === m.row && e.pos.x > m.pos.x);
+      if (enemiesInRow.length > 0 && m.cooldown <= 0 && k.paused===false){
+        m.cooldown=2.5;
+        updateSpores(25);
+      }
+      
     }
   });
-
+  k.onUpdate("playerBullet", (pb)=>{
+    if (!k.paused) pb.move(pb.speed,0);
+  });
   // Enemy Movement & Left Edge Logic
   k.onUpdate("enemy", (e) => {
     if (!e.eating && !k.paused) e.move(-e.speed, 0);
@@ -756,7 +773,19 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     // Left Edge Boundary Breach
     if (e.pos.x <= MARGIN_LEFT) {
       k.destroy(e);
+      remainingEnemiesInWave--;
       enemiesEscaped++;
+      if (remainingEnemiesInWave <= 0 && enemiesEscaped < 3 && !waveFinishedTriggered) {
+        waveFinishedTriggered = true;
+        k.wait(0.5, () => {
+          if (isSecretMode) {
+            k.go("win", { isSecretMode: true });
+          } else {
+            showWaveVictoryModal();
+          }
+        });
+      }
+      
 
       boundaryCounterLabel.text = `${enemiesEscaped}/3`;
       boundaryCounterLabel.textSize = 54;
@@ -831,21 +860,27 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
     if (e.type === "witch" && !e.eating) {
       const towersInRow = k.get("mushTower").filter((m) => m.row === e.row && m.pos.x < e.pos.x);
-      if (towersInRow.length > 0 && k.time() - e.lastWitchShot > 2.5) {
-        e.lastWitchShot = k.time();
+      if (k.paused || isModalOpen) return;
+      if (e.witchCooldown > 0) {
+      e.witchCooldown -= k.dt();
+      }
+      if (towersInRow.length > 0 && e.witchCooldown<=0 && k.paused!=true) {
+        e.witchCooldown=2.5
         k.add([
           k.circle(7),
           k.pos(e.pos.x - 15, e.pos.y),
           k.color(200, 50, 255),
           k.area(),
-          k.move(180, 220),
           "enemyBullet",
-          { damage: 12, row: e.row },
+          { damage: 12, row: e.row,speed: 150,cooldown:0 },
         ]);
       }
     }
+    
   });
-
+  k.onUpdate("enemyBullet",(eb) =>{
+   if(k.paused!=true) eb.move(-eb.speed,0);
+  });
   // Collisions & Win Condition Trigger
   k.onCollide("playerBullet", "enemy", (b, e) => {
     e.hp -= b.damage;
