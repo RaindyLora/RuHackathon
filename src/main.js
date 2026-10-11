@@ -88,8 +88,8 @@ const WAVE_COMPOSITIONS = {
 
 const enemyIntroData = {
   elf: "NEW ENEMY: Corrupted Elf!\nFast movement speed, low health. Walks straight down lanes.",
-  giant: "NEW ENEMY: Corrupted Giant!\nVery slow speed, massive health pool. High threat!",
-  witch: "NEW ENEMY: Dark Witch!\nRanged attacker. Stops periodically to hurl spells at mushrooms!"
+  witch: "NEW ENEMY: Dark Witch!\nRanged attacker. Stops periodically to hurl spells at mushrooms!",
+  giant: "NEW ENEMY: Corrupted Giant!\nVery slow speed, massive health pool. High threat!"
 };
 
 const seenEnemies = { elf: false, giant: false, witch: false };
@@ -229,7 +229,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   isModalOpen = false;
   k.paused = false;
   let currentWave = wave;
-  let currentSpores = isSecretMode ? 999999 : (BASE_WAVE_SPORES[currentWave] || 100) + extraSpores;
+  let currentSpores = isSecretMode ? 1000 : (BASE_WAVE_SPORES[currentWave] || 100) + extraSpores;
   let selectedTower = "shooter";
   let enemiesEscaped = 0;
   let escapedWarningShown = false;
@@ -242,9 +242,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   // Wave Enemy Queue Construction
   let enemyQueue = [];
   if (isSecretMode) {
-    for (let i = 0; i < 100; i++) enemyQueue.push("elf");
-    for (let i = 0; i < 50; i++) enemyQueue.push("witch");
-    for (let i = 0; i < 30; i++) enemyQueue.push("giant");
+    for (let i = 0; i < 100; i++) enemyQueue.push("giant");
   } else {
     const comp = WAVE_COMPOSITIONS[currentWave] || { elf: 5, witch: 0, giant: 0 };
     for (let i = 0; i < comp.elf; i++) enemyQueue.push("elf");
@@ -252,7 +250,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     for (let i = 0; i < comp.giant; i++) enemyQueue.push("giant");
   }
 
-  // Explicit variable for total enemies needed to eliminate
   let remainingEnemiesInWave = enemyQueue.length;
 
   const GRID_ROWS = 5;
@@ -273,7 +270,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     eco: { name: "Economy", cost: 70, color: k.rgb(240, 210, 50), hp: 30 },
   };
 
-  // Top-Left Return Button & Confirmation
+  // Return Button & Confirmation Modal
   const returnBtn = k.add([
     k.rect(100, 35),
     k.pos(15, 15),
@@ -497,7 +494,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         { row, col, occupied: false },
       ]);
 
-      // Guard against placing towers while modal overlays are active
       tile.onClick(() => {
         if (isModalOpen || tile.occupied) return;
 
@@ -622,9 +618,13 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
     renderFact();
   }
 
-  // Enemy Intro Modal
+  // Enemy Intro Modal (Wave 1: Elf, Wave 3: Witch, Wave 5: Giant)
   function checkEnemyIntro(enemyType, callback) {
-    if (!seenEnemies[enemyType] && currentWave === 1 && !isSecretMode) {
+    const shouldShowElf = (enemyType === "elf" && currentWave === 1 && !seenEnemies.elf);
+    const shouldShowWitch = (enemyType === "witch" && currentWave === 3 && !seenEnemies.witch);
+    const shouldShowGiant = (enemyType === "giant" && currentWave === 5 && !seenEnemies.giant);
+
+    if ((shouldShowElf || shouldShowWitch || shouldShowGiant) && !isSecretMode) {
       seenEnemies[enemyType] = true;
       isModalOpen = true;
       k.paused = true;
@@ -856,7 +856,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       remainingEnemiesInWave--;
       updateSpores(15);
 
-      // WIN CHECK: Triggered as soon as player eliminates all enemies in wave
       if (remainingEnemiesInWave <= 0 && enemiesEscaped < 3 && !waveFinishedTriggered) {
         waveFinishedTriggered = true;
         k.wait(0.5, () => {
@@ -962,12 +961,16 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       k.destroyAll("victoryUI");
       isModalOpen = false;
       k.paused = false;
-      if (currentWave < 7) {
-        triggerPostWaveQuizzes();
-      } else {
-        secretModeUnlocked = true;
-        k.go("win", { isSecretMode: false });
-      }
+
+      // Small delay prevents input leakage into quiz buttons
+      k.wait(0.12, () => {
+        if (currentWave < 7) {
+          triggerPostWaveQuizzes();
+        } else {
+          secretModeUnlocked = true;
+          k.go("win", { isSecretMode: false });
+        }
+      });
     });
   }
 
@@ -1054,8 +1057,12 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
             quizSporesEarned += qData.reward;
           }
           k.destroyAll("quizUI");
-          quizIdx++;
-          renderQuiz();
+
+          // Small delay prevents click bleed between sequential quiz questions
+          k.wait(0.1, () => {
+            quizIdx++;
+            renderQuiz();
+          });
         });
       });
     }
