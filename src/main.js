@@ -7,6 +7,49 @@ const k = kaplay({
   background: [30, 45, 30],
 });
 
+// ==========================================
+// AUDIO ASSETS & MANAGEMENT
+// ==========================================
+k.loadSound("menuBGM", "/audio/MenuMusic (1).mp3");
+k.loadSound("buildBGM", "/audio/BuildMusic (1).mp3");
+k.loadSound("attackBGM", "/audio/AttackMusic (1).mp3");
+k.loadSound("winBGM", "/audio/WinMusic (1).mp3");
+k.loadSound("loseBGM", "/audio/Lose (1).mp3");
+
+let currentAudioTrack = null;
+let currentTrackName = "";
+let audioUnlocked = false;
+
+function playMusic(soundName, volume = 0.5) {
+  currentTrackName = soundName;
+
+  if (currentAudioTrack) {
+    currentAudioTrack.stop();
+    currentAudioTrack = null;
+  }
+
+  if (!audioUnlocked) return;
+
+  try {
+    currentAudioTrack = k.play(soundName, {
+      loop: true,
+      volume: volume,
+    });
+  } catch (err) {
+    console.warn(`Audio track '${soundName}' failed to play:`, err);
+  }
+}
+
+// Unlock audio on first user click anywhere on the page
+window.addEventListener("click", () => {
+  if (!audioUnlocked) {
+    audioUnlocked = true;
+    if (currentTrackName) {
+      playMusic(currentTrackName);
+    }
+  }
+}, { once: true });
+
 // Global state tracking Secret Mode unlock status
 let secretModeUnlocked = false;
 
@@ -102,6 +145,7 @@ let isModalOpen = false;
 // SCENE 1: MAIN MENU
 // ==========================================
 k.scene("menu", () => {
+  playMusic("menuBGM");
   isModalOpen = false;
   k.paused = false;
   k.add([
@@ -229,15 +273,21 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   isModalOpen = false;
   k.paused = false;
   let currentWave = wave;
-  let currentSpores = isSecretMode ? 1000 : (BASE_WAVE_SPORES[currentWave] || 100) + extraSpores;
+  let currentSpores = isSecretMode ? 500 : (BASE_WAVE_SPORES[currentWave] || 100) + extraSpores;
   let selectedTower = "shooter";
   let enemiesEscaped = 0;
   let escapedWarningShown = false;
   let waveFinishedTriggered = false;
 
-  // Building Phase Timer
+  // Building Phase Timer & Music State
   let buildTimeRemaining = isSecretMode ? 0 : 30;
   let isBuildingPhase = !isSecretMode;
+
+  if (isBuildingPhase) {
+    playMusic("buildBGM");
+  } else {
+    playMusic("attackBGM");
+  }
 
   // Wave Enemy Queue Construction
   let enemyQueue = [];
@@ -370,7 +420,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
   // HUD Elements
   const sporeText = k.add([
-    k.text(`Spores: ${isSecretMode ? "∞" : currentSpores} | Wave: ${isSecretMode ? "SECRET" : currentWave + "/7"}`, { size: 18 }),
+    k.text(`Spores: ${isSecretMode ? currentSpores : currentSpores} | Wave: ${isSecretMode ? "SECRET" : currentWave + "/7"}`, { size: 18 }),
     k.pos(130, 22),
     k.color(255, 235, 120),
     k.fixed(),
@@ -388,10 +438,14 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   let earlyStartLabel = null;
 
   function endBuildingPhase() {
+    if (!isBuildingPhase) return;
     isBuildingPhase = false;
     phaseTimerText.text = "ATTACK PHASE!";
     if (earlyStartBtn) k.destroy(earlyStartBtn);
     if (earlyStartLabel) k.destroy(earlyStartLabel);
+    
+    // Switch to Attack Music
+    playMusic("attackBGM");
   }
 
   if (isBuildingPhase) {
@@ -443,9 +497,8 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   ]);
 
   function updateSpores(amt) {
-    if (isSecretMode) return;
     currentSpores += amt;
-    sporeText.text = `Spores: ${currentSpores} | Wave: ${currentWave}/7`;
+    sporeText.text = `Spores: ${currentSpores} | Wave: ${isSecretMode ? "SECRET" : currentWave + "/7"}`;
   }
 
   // Sidebar Tower Selectors
@@ -498,7 +551,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
         if (isModalOpen || tile.occupied) return;
 
         const spec = TOWER_SPECS[selectedTower];
-        if (currentSpores >= spec.cost || isSecretMode) {
+        if (currentSpores >= spec.cost) {
           updateSpores(-spec.cost);
           tile.occupied = true;
 
@@ -516,7 +569,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
               hp: spec.hp,
               lastShot: 0,
               cooldown: 0,
-              initialPause:0,
+              initialPause: 0,
               lastEco: 0,
               tileRef: tile,
             },
@@ -607,7 +660,9 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       nextBtn.onClick(() => {
         factIndex++;
         if (factIndex < facts.length) {
-          renderFact();
+          k.wait(0.12, () => {
+            renderFact();
+          });
         } else {
           k.destroyAll("eduUI");
           isModalOpen = false;
@@ -732,40 +787,39 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
   k.onUpdate("mushTower", (m) => {
     if (m.type === "shooter") {
       if (k.paused || isModalOpen) return;
-      // Decrement remaining cooldown timer using frame delta time
       if (m.cooldown > 0) {
         m.cooldown -= k.dt();
       }
       const enemiesInRow = k.get("enemy").filter((e) => e.row === m.row && e.pos.x > m.pos.x);
-      if (enemiesInRow.length > 0 && m.cooldown <= 0 && k.paused===false) {
-        m.cooldown=2.0;
+      if (enemiesInRow.length > 0 && m.cooldown <= 0 && k.paused === false) {
+        m.cooldown = 2.0;
         k.add([
           k.circle(8),
           k.pos(m.pos.x + 15, m.pos.y),
           k.color(255, 80, 80),
           k.area(),
           "playerBullet",
-          { damage: 10, row: m.row , speed: 100},
+          { damage: 10, row: m.row, speed: 100 },
         ]);
       }
     }
     if (m.type === "eco") {
       if (k.paused || isModalOpen) return;
-      // Decrement remaining cooldown timer using frame delta time
       if (m.cooldown > 0) {
         m.cooldown -= k.dt();
       }
       const enemiesInRow = k.get("enemy").filter((e) => e.row === m.row && e.pos.x > m.pos.x);
-      if (enemiesInRow.length > 0 && m.cooldown <= 0 && k.paused===false){
-        m.cooldown=2.5;
+      if (enemiesInRow.length > 0 && m.cooldown <= 0 && k.paused === false) {
+        m.cooldown = 2.5;
         updateSpores(25);
       }
-      
     }
   });
-  k.onUpdate("playerBullet", (pb)=>{
-    if (!k.paused) pb.move(pb.speed,0);
+
+  k.onUpdate("playerBullet", (pb) => {
+    if (!k.paused) pb.move(pb.speed, 0);
   });
+
   // Enemy Movement & Left Edge Logic
   k.onUpdate("enemy", (e) => {
     if (!e.eating && !k.paused) e.move(-e.speed, 0);
@@ -785,7 +839,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
           }
         });
       }
-      
 
       boundaryCounterLabel.text = `${enemiesEscaped}/3`;
       boundaryCounterLabel.textSize = 54;
@@ -862,25 +915,26 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       const towersInRow = k.get("mushTower").filter((m) => m.row === e.row && m.pos.x < e.pos.x);
       if (k.paused || isModalOpen) return;
       if (e.witchCooldown > 0) {
-      e.witchCooldown -= k.dt();
+        e.witchCooldown -= k.dt();
       }
-      if (towersInRow.length > 0 && e.witchCooldown<=0 && k.paused!=true) {
-        e.witchCooldown=2.5
+      if (towersInRow.length > 0 && e.witchCooldown <= 0 && k.paused !== true) {
+        e.witchCooldown = 2.5;
         k.add([
           k.circle(7),
           k.pos(e.pos.x - 15, e.pos.y),
           k.color(200, 50, 255),
           k.area(),
           "enemyBullet",
-          { damage: 12, row: e.row,speed: 150,cooldown:0 },
+          { damage: 12, row: e.row, speed: 150, cooldown: 0 },
         ]);
       }
     }
-    
   });
-  k.onUpdate("enemyBullet",(eb) =>{
-   if(k.paused!=true) eb.move(-eb.speed,0);
+
+  k.onUpdate("enemyBullet", (eb) => {
+    if (k.paused !== true) eb.move(-eb.speed, 0);
   });
+
   // Collisions & Win Condition Trigger
   k.onCollide("playerBullet", "enemy", (b, e) => {
     e.hp -= b.damage;
@@ -935,6 +989,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 
   // Mid-Wave Victory Popup Modal
   function showWaveVictoryModal() {
+    playMusic("winBGM");
     isModalOpen = true;
     k.paused = true;
 
@@ -997,7 +1052,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
       isModalOpen = false;
       k.paused = false;
 
-      // Small delay prevents input leakage into quiz buttons
       k.wait(0.12, () => {
         if (currentWave < 7) {
           triggerPostWaveQuizzes();
@@ -1093,7 +1147,6 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
           }
           k.destroyAll("quizUI");
 
-          // Small delay prevents click bleed between sequential quiz questions
           k.wait(0.1, () => {
             quizIdx++;
             renderQuiz();
@@ -1200,6 +1253,7 @@ k.scene("game", ({ wave, extraSpores, isSecretMode }) => {
 // SCENE 4: GAME OVER (LOSE)
 // ==========================================
 k.scene("lose", () => {
+  playMusic("loseBGM");
   isModalOpen = false;
   k.paused = false;
   k.add([
@@ -1237,6 +1291,7 @@ k.scene("lose", () => {
 // SCENE 5: VICTORY (WIN)
 // ==========================================
 k.scene("win", ({ isSecretMode }) => {
+  playMusic("winBGM");
   isModalOpen = false;
   k.paused = false;
   k.add([
